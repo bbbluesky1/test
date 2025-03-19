@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block title %}ダッシュボード{% endblock %}
+
+{% block content %}
+<h2 class="text-center">ようこそ, {{ current_user.username }}さん！</h2>
+<p class="text-center">現在のコイン: <strong>{{ current_user.coins }}</strong></p>
+
+<div class="d-flex justify-content-center mt-4">
+    <a href="{{ url_for('buy_coins_page') }}" class="btn btn-primary me-2">コインを購入</a>
+    <a href="{{ url_for('play_slot') }}" class="btn btn-success">スロットを回す</a>
+</div>
+{% endblock %}

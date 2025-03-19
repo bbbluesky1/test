@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}コイン購入{% endblock %}
+
+{% block content %}
+<h2 class="text-center">コインを購入</h2>
+
+<form id="payment-form" class="mt-3">
+    <label for="amount" class="form-label">購入するコイン数:</label>
+    <input type="number" id="amount" name="amount" class="form-control" min="1" required>
+
+    <!-- カード入力フィールド -->
+    <div id="card-element" class="form-control mt-3"></div>
+
+    <button type="submit" class="btn btn-primary mt-3 w-100">購入する</button>
+</form>
+
+<div id="payment-message" class="mt-3 text-center"></div>
+
+<script src="https://js.stripe.com/v3/"></script>
+<script>
+    const stripe = Stripe("{{ public_key }}");
+    const elements = stripe.elements();
+    const cardElement = elements.create("card");
+    cardElement.mount("#card-element");
+
+    document.getElementById("payment-form").addEventListener("submit", async function(event) {
+        event.preventDefault();
+        
+        const amount = document.getElementById("amount").value;
+
+        // ❶ サーバーに `buy_coins` をリクエストして PaymentIntent を作成
+        const response = await fetch("/buy_coins", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },  // JSON形式で送信
+            body: JSON.stringify({ amount: amount })  // 修正: JSONにする
+        });
+
+
+        const data = await response.json();
+        if (data.error) {
+            document.getElementById("payment-message").innerText = data.error;
+            return;
+        }
+
+        // ❷ Stripe でカードを使って支払い
+        const { paymentIntent, error } = await stripe.confirmCardPayment(data.clientSecret, {
+            payment_method: { card: cardElement }
+        });
+
+        if (error) {
+            document.getElementById("payment-message").innerText = error.message;
+        } else {
+            // ❸ サーバーに支払い完了を通知
+            const confirmResponse = await fetch("/confirm_payment", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ payment_id: paymentIntent.id, amount: amount })
+            });
+
+            const confirmData = await confirmResponse.json();
+            if (confirmData.error) {
+                document.getElementById("payment-message").innerText = confirmData.error;
+            } else {
+                document.getElementById("payment-message").innerText = "購入成功！";
+                setTimeout(() => location.href = "/dashboard", 2000);
+            }
+        }
+    });
+</script>
+{% endblock %}
